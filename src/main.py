@@ -1,8 +1,8 @@
 from ingestion import load_all_pdfs
 from llm import get_embeddings, get_llm
-from vector_db import QdrantDB
 from chunking import split_documents
-from hybrid_retrieval import hybrid_retriever
+from ingest import index_document, create_index
+from retriever import hybrid_search
 
 
 if __name__ == "__main__":
@@ -17,28 +17,33 @@ if __name__ == "__main__":
     # Get embeddings model
     embeddings = get_embeddings()
 
-    # Set up Qdrant vector database
-    qdrant_db = QdrantDB(collection_name="cross_border_data")
-    #qdrant_db.connect_to_qdrant()
-    qdrant_db.create_collection()
-    qdrant_db.add_documents(split_docs, embeddings)
-    print("Documents added to Qdrant vector store.")
+    print("Indexing documents into OpenSearch...")
+    index_document(split_docs, embedder=embeddings, index_name="legal_docs")
 
-    query = "What are the legal requirements for cross-border data transfer in Kenya?"
-    # Create hybrid retriever
-    retrieved_docs = hybrid_retriever(
-        vectorstore=qdrant_db.vectorstore,
-        documents=split_docs,
-        query=query,
-        bm25_weight=0.5,
-        semantic_weight=0.5,
-        k=5
-    )
+    query_text="What are the legal requirements for cross-border data transfer in Kenya?"
+
+    print("Performing hybrid search...")
+    hits = hybrid_search(
+    query_text=query_text,
+    embedder=embeddings,
+    top_k=4)
+
+    """
+    if not hits:
+        print("No results found. Check if your index contains data.")
+    else:
+        for i, hit in enumerate(hits, 1):
+            print(f"\n--- RETRIEVAL {i} (Score: {hit['score']:.4f}) ---")
+            print(f"Source: {hit['source']} | Section: {hit['section']}")
+            # FIXED: Changed ["text"] to ["content"] to match your ingest.py field name
+            print(hit["content"][:500] + "...")
+    """
+    
   
     # Get LLM model
     llm = get_llm()
 
-    context = "\n\n.".join(doc.page_content for doc in retrieved_docs)
+    context = "\n\n.".join(hit["content"] for hit in hits)
     
     prompt_template = """
     You are a legal assistant specializing in cross-border data transfers.
@@ -51,7 +56,11 @@ if __name__ == "__main__":
     Answer:
     """
 
-    formatted_prompt = prompt_template.format(context=context, query=query)
+    formatted_prompt = prompt_template.format(context=context, query=query_text)
+
+    print("\nGenerating final legal answer...")
     response = llm.invoke(formatted_prompt)
+
+    print("\n=== LEGAL ADVISEMENT ===")
     print(response.content if hasattr(response, 'content') else response)
     

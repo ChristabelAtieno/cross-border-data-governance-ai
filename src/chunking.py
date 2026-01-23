@@ -3,13 +3,13 @@ from langchain_core.documents import Document
 from typing import List
 
 def split_documents(documents: List[Document],
-                    chunk_size: int = 1000, 
-                    chunk_overlap: int = 100, 
+                    chunk_size: int = 1200, 
+                    chunk_overlap: int = 250, 
                     separators: List| None = None) -> List[Document]:
     """Split documents into smaller chunks using RecursiveCharacterTextSplitter"""
     
     if separators is None:
-        separators = ["\n\n", "\n", ".", " ", ""]
+        separators = ["\n\n", "\n", "; ", ". ", " ", ""]
     
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
