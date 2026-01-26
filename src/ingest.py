@@ -1,4 +1,4 @@
-from opensearch_client import get_client
+from .opensearch_client import get_client
 
 def create_index(client, index_name="legal_docs"):
     if not client.indices.exists(index=index_name):

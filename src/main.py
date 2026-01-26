@@ -26,7 +26,7 @@ if __name__ == "__main__":
     hits = hybrid_search(
     query_text=query_text,
     embedder=embeddings,
-    top_k=4)
+    top_k=6)
 
     """
     if not hits:

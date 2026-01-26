@@ -5,3 +5,4 @@ langchain-text-splitters
 qdrant-client
 pytesseract
 pypdf
+streamlit

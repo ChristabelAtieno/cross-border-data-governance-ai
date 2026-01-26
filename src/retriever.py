@@ -1,4 +1,4 @@
-from opensearch_client import get_client
+from .opensearch_client import get_client
 
 def hybrid_search(query_text, embedder, top_k=6):
     client = get_client()
