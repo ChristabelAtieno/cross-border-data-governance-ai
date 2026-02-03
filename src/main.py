@@ -1,8 +1,8 @@
-from ingestion import load_all_pdfs
-from llm import get_embeddings, get_llm
-from chunking import split_documents
-from ingest import index_document, create_index
-from retriever import hybrid_search
+from src.ingestion import load_all_pdfs
+from src.llm import get_embeddings, get_llm
+from src.chunking import split_documents
+from src.ingest import index_document, create_index
+from src.retriever import hybrid_search
 
 
 if __name__ == "__main__":
@@ -21,6 +21,7 @@ if __name__ == "__main__":
     index_document(split_docs, embedder=embeddings, index_name="legal_docs")
 
     query_text="What are the legal requirements for cross-border data transfer in Kenya?"
+    #What are the data protection principles mentioned in the 2019 Act?
 
     print("Performing hybrid search...")
     hits = hybrid_search(

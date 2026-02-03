@@ -1,6 +1,7 @@
+import os
 from .opensearch_client import get_client
 
-def hybrid_search(query_text, embedder, top_k=6):
+def hybrid_search(query_text, embedder, top_k=10):
     client = get_client()
     query_vector = embedder.embed_query(query_text)
     
@@ -30,9 +31,11 @@ def hybrid_search(query_text, embedder, top_k=6):
     }
 
     try:
-        response = client.search(index="legal_docs", 
+        index_name = os.getenv("OPENSEARCH_INDEX", "legal_docs")
+        pipeline_id = os.getenv("OPENSEARCH_SEARCH_PIPELINE", "legal-hybrid-pipeline")
+        response = client.search(index=index_name, 
                                  body=body,
-                                 params={"search_pipeline": "legal-hybrid-pipeline"})
+                                 params={"search_pipeline": pipeline_id})
 
         hits=response['hits']['hits']
         results = []

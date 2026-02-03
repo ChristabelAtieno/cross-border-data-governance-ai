@@ -1,14 +1,14 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
-from typing import List, Any
+from typing import List, Sequence
 
-def load_all_pdfs(folder_paths: str) -> List[Document]:
+def load_all_pdfs(folder_paths: Sequence[str]) -> List[Document]:
     """
     Loads all PDF documents from the specified folder paths.
     
     Args:
-        folder_paths: List of folder paths containing PDF files
+        folder_paths: Folder paths (relative to project root) containing PDF files
         
     Returns:
         List of Document objects
@@ -34,6 +34,11 @@ def load_all_pdfs(folder_paths: str) -> List[Document]:
                 try:
                     loader = PyPDFLoader(file_path)
                     docs = loader.load()
+
+                    for doc in docs:
+                        doc.metadata["source"] = os.path.basename(file_path)
+                        doc.metadata["section"] = ""
+
                     documents.extend(docs)
                     print(f"Loaded: {filename}")
                 except Exception as e:

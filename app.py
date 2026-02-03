@@ -3,8 +3,9 @@ import time
 from src.ingestion import load_all_pdfs
 from src.chunking import split_documents
 from src.llm import get_embeddings, get_llm
-from src.ingest import create_index, index_document
+from src.ingest import index_document
 from src.retriever import hybrid_search
+from src.reranker import rerank_hits
 
 st.set_page_config(page_title="Kenya Legal AI",layout="wide")
 
@@ -23,8 +24,6 @@ def load_embeddings():
 def load_llm():
     print("Loading LLM Model...")
     return get_llm()
-
-
 
 # sidebar for indexing documents
 with st.sidebar:
@@ -49,46 +48,74 @@ if prompt := st.chat_input("Ask about cross-border data transfer in Kenya"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Searching legal database"):
+        with st.status("Legal analysis in progress...") as status:
             start_time = time.time()
+
+            status.write("Searching legal documents...")
             embeddings = load_embeddings()
-            hits = hybrid_search(
-                query_text=prompt,
-                embedder=embeddings,
-                top_k=6)
-            
-            if hits:
-                context = "\n\n.".join(hit["content"] for hit in hits)
 
-                prompt_template = """
-                You are a legal assistant specializing in cross-border data transfers.
-                Use ONLY the information provided in the context to answer the questions.
-                If the answer is not contained in the context, clearly state what is known and what is missing
-                Context:
-                {context}
-                Question:
-                {query}
-                Answer:
-                """
+            raw_hits = hybrid_search(query_text=prompt, embedder=embeddings, top_k=20)
 
-                llm = load_llm()
+            hits = rerank_hits(prompt, raw_hits, top_k=10)
 
-                full_prompt = prompt_template.format(context=context, query=prompt)
-                response = llm.invoke(full_prompt)
+            if not hits:
+                status.update(label="No relevant legal documents found.", state="error")
+                st.stop()
 
-                answer = response.content if hasattr(response, 'content') else response
+            #context = "\n\n".join(hit["content"] for hit in hits)
+            context = "\n\n".join(f"Source: {hit['source']}, Section: {hit['section']}\nContent: {hit['content']}" for hit in hits)
+
+            prompt_template = """
+You are a legal assistant specializing in Kenyan cross-border data transfers.
+Use ONLY the information provided in the context to answer the question.
+If the answer is not contained in the context, clearly state what is known
+and what is missing. Do NOT invent legal provisions.
+
+RESPONSE GUIDELINES:
+1. Start by explicitly citing the legal source and section (e.g., "According to the Data Protection Act, Section 25...").
+2. Use a professional, authoritative legal tone suitable for a compliance analyst.
+3. Organize the answer with short headings (e.g., "Legal basis", "Requirements", "Practical implications").
+4. Use bullet points for lists of principles, requirements, and obligations.
+5. Where helpful, quote short verbatim phrases from the law in quotes.
+6. If the information is not in the context, say:
+   "Based on the provided legal documents, the specific details for [X] are not available."
+7. Add a final line: "This is not legal advice and should not replace consultation with a qualified lawyer."
+
+Context:
+{context}
+Question:
+{query}
+Answer:
+"""
+
+            full_prompt = prompt_template.format(context=context, query=prompt)
+
+            status.write("Generating response using LLM...")
+            llm = load_llm()
+            status.update(label="Streaming response...", state="running")
+
+            response_holder = st.empty()
+            full_response = ""
+
+            try:
+                for chunk in llm.stream(full_prompt):
+                    content = chunk.content if hasattr(chunk, "content") else chunk
+                    full_response += content
+                    response_holder.markdown(full_response + "▌")
 
                 latency = time.time() - start_time
-                answer += f"\n\n*Retrieved {len(hits)} documents in {latency:.2f} seconds.*"
-                st.markdown(answer)
+                answer = full_response + f"\n\n*Retrieved {len(hits)} documents in {latency:.2f} seconds.*"
+                response_holder.markdown(answer)
 
-                # Display sources
-                with st.expander("View Legal sources"):
-                    for i, hit in enumerate(hits):
-                        st.markdown(f"**Source {i}:** {hit['source']} | **Section:** {hit['section']}")
-                        st.markdown(hit["content"][:500] + "...")
+                status.update(label="Completed", state="complete")
+            except Exception as e:
+                status.update(label="Error", state="error")
+                st.error(f"An error occurred: {e}")
+
+        with st.expander("View Legal sources"):
+            for i, hit in enumerate(hits, start=1):
+                st.markdown(f"**Source {i}:** {hit['source']} | **Section:** {hit['section']}")
+                st.markdown(hit["content"][:500] + "...")
+
+        st.session_state.messages.append({"role": "assistant", "content": answer})
                 
-                st.session_state.messages.append({"role":"assistant","content":answer})
-            else:
-                st.error("No relevant legal documents found in the database.")
-                st.session_state.messages.append({"role":"assistant","content":"No relevant legal documents found in the database."})
