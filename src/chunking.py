@@ -4,19 +4,15 @@ from typing import List
 import re
 
 def clean_text(text: str) -> str:
-    """Clean text by removing extra whitespace and unwanted characters"""
-    text = re.sub(r'(?<=[a-zA-Z])\s(?=[a-zA-Z](?:\s|$))', '', text)
-
+    # text = re.sub(r'(?<=[a-zA-Z])\s(?=[a-zA-Z](?:\s|$))', '', text)
     text = re.sub(r'\s+', ' ', text)
-
     return text.strip()
 
 def split_documents(documents: List[Document],
                     chunk_size: int = 1200, 
                     chunk_overlap: int = 250, 
                     separators: List| None = None) -> List[Document]:
-    """Split documents into smaller chunks using RecursiveCharacterTextSplitter"""
-    
+        
     for doc in documents:
         doc.page_content = clean_text(doc.page_content)
         
