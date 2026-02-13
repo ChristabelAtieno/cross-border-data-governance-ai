@@ -1,13 +1,13 @@
 import streamlit as st
 import time
-from src.ingestion import load_all_pdfs
+from src.document_loader import load_all_pdfs
 from src.chunking import split_documents
 from src.llm import get_embeddings, get_llm
-from src.ingest import index_document
-from src.retriever import hybrid_search
+from src.faiss_retriever import hybrid_search
+from src.prompts import prompt_template
 from src.reranker import rerank_hits
 
-st.set_page_config(page_title="Kenya Legal AI",layout="wide")
+st.set_page_config(page_title="Cross-Border Compliance AI",layout="wide")
 
 #display chat history
 if "messages" not in st.session_state:
@@ -65,28 +65,6 @@ if prompt := st.chat_input("Ask about cross-border data transfer in Kenya"):
             #context = "\n\n".join(hit["content"] for hit in hits)
             context = "\n\n".join(f"Source: {hit['source']}, Section: {hit['section']}\nContent: {hit['content']}" for hit in hits)
 
-            prompt_template = """
-You are a legal assistant specializing in Kenyan cross-border data transfers.
-Use ONLY the information provided in the context to answer the question.
-If the answer is not contained in the context, clearly state what is known
-and what is missing. Do NOT invent legal provisions.
-
-RESPONSE GUIDELINES:
-1. Start by explicitly citing the legal source and section (e.g., "According to the Data Protection Act, Section 25...").
-2. Use a professional, authoritative legal tone suitable for a compliance analyst.
-3. Organize the answer with short headings (e.g., "Legal basis", "Requirements", "Practical implications").
-4. Use bullet points for lists of principles, requirements, and obligations.
-5. Where helpful, quote short verbatim phrases from the law in quotes.
-6. If the information is not in the context, say:
-   "Based on the provided legal documents, the specific details for [X] are not available."
-7. Add a final line: "This is not legal advice and should not replace consultation with a qualified lawyer."
-
-Context:
-{context}
-Question:
-{query}
-Answer:
-"""
 
             full_prompt = prompt_template.format(context=context, query=prompt)
 

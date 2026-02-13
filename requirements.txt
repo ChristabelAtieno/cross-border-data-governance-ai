@@ -1,11 +1,31 @@
+# Core dependencies
+streamlit
+python-dotenv
+
+# LangChain
 langchain
 langchain-community
-langchain-ollama
 langchain-text-splitters
-pytesseract
-pypdf
-streamlit
-opensearch-py
 langchain-groq
-python-dotenv
+
+# Embeddings
+langchain-ollama
+
+# Vector Store (FAISS)
+faiss-cpu==1.8.0
+
+# Retrieval
+rank-bm25==0.2.2
+
+# Document Loading
+pypdf
+pytesseract
+
+# Reranking (if you keep this feature)
 sentence-transformers
+
+#opensearch
+opensearch-py
+
+numpy
+
