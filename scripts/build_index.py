@@ -1,22 +1,20 @@
 import sys
 import pickle
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.faiss_retriever import load_retriever
 from src.document_loader import load_all_pdfs
 from src.chunking import split_documents
 from langchain_community.vectorstores import FAISS
 from src.llm import get_embeddings
 import config
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 def main():
     print("Loading documents...")
-    doc_dir = config.PDF_DIR
+    doc_dir = config.DOCUMENTS_DIR
     print(f"Document directory: {doc_dir}")
 
-    docs = load_all_pdfs(config.PDF_DIR)
+    docs = load_all_pdfs(config.DOCUMENTS_DIR)
     print(f"Loaded {len(docs)} documents.")
 
     if len(docs) == 0:
@@ -33,12 +31,11 @@ def main():
 
     print("Creating FAISS vector store...")
     vectorstore = FAISS.from_documents(chunks, embedder)
-    vectorstore.save_local(str(config.VECTOR_STORE_DIR))
 
-    print("Saved FAISS vector store to disk.")
     config.VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+
     vectorstore.save_local(str(config.VECTOR_STORE_DIR))
-    print("FAISS vector store created and saved successfully.")
+    print(f"FAISS vector store created and saved successfully to: {config.VECTOR_STORE_DIR}")
     
     print("Saving chunks for BM25 retriever...")
     chunks_path = config.VECTOR_STORE_DIR / "chunks.pkl"

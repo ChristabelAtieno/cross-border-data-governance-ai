@@ -3,12 +3,12 @@
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
-
-
 from src.llm import get_embeddings
+import streamlit as st
 import config
 import pickle
 
+@st.cache_resource
 def load_retriever():
 
     embedder = get_embeddings() 

@@ -1,9 +1,7 @@
 import streamlit as st
 import time
-from src.document_loader import load_all_pdfs
-from src.chunking import split_documents
-from src.llm import get_embeddings, get_llm
-from src.faiss_retriever import hybrid_search
+from src.llm import get_llm
+from src.faiss_retriever import load_retriever, hybrid_search
 from src.prompts import prompt_template
 from src.reranker import rerank_hits
 
@@ -17,24 +15,16 @@ st.title("Kenya Legal AI Assistant")
 st.caption("Cross-border data transfer laws in Kenya")
 
 @st.cache_resource
-def load_embeddings():
-    return get_embeddings()
+def load_retriever_cached():
+    return load_retriever()
 
 @st.cache_resource
-def load_llm():
+def load_llm_cached():
     print("Loading LLM Model...")
     return get_llm()
 
-# sidebar for indexing documents
-with st.sidebar:
-    st.header("Ingest Legal Documents")
-    if st.button("Ingest PDFs"):
-        with st.spinner("Loading and indexing documents..."):
-            documents = load_all_pdfs(["rag_docs"])
-            split_docs = split_documents(documents)
-            embeddings = load_embeddings()
-            index_document(split_docs, embedder=embeddings, index_name="legal_docs")
-            st.success("Ingestion and Indexing Complete!")
+retriever = load_retriever_cached()
+
 
 # chat history
 for message in st.session_state.messages:
@@ -52,9 +42,8 @@ if prompt := st.chat_input("Ask about cross-border data transfer in Kenya"):
             start_time = time.time()
 
             status.write("Searching legal documents...")
-            embeddings = load_embeddings()
 
-            raw_hits = hybrid_search(query_text=prompt, embedder=embeddings, top_k=20)
+            raw_hits = hybrid_search(query_text=prompt, retriever=retriever, top_k=20)
 
             hits = rerank_hits(prompt, raw_hits, top_k=10)
 
@@ -62,14 +51,12 @@ if prompt := st.chat_input("Ask about cross-border data transfer in Kenya"):
                 status.update(label="No relevant legal documents found.", state="error")
                 st.stop()
 
-            #context = "\n\n".join(hit["content"] for hit in hits)
             context = "\n\n".join(f"Source: {hit['source']}, Section: {hit['section']}\nContent: {hit['content']}" for hit in hits)
-
 
             full_prompt = prompt_template.format(context=context, query=prompt)
 
             status.write("Generating response using LLM...")
-            llm = load_llm()
+            llm = load_llm_cached()
             status.update(label="Streaming response...", state="running")
 
             response_holder = st.empty()
